@@ -1,0 +1,64 @@
+HELP.md
+target/
+.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### VS Code ###
+.vscode/
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Logs and temp files
+*.log
+logs/
+*.tmp
+*.swp
+*.swo
+
+# Additional build outputs
+out/
+
+# Maven backup files
+pom.xml.versionsBackup
+release.properties
+dependency-reduced-pom.xml
+
+# Java crash logs / heap dumps
+hs_err_pid*
+replay_pid*
+*.hprof
+.attach_pid*
+.java_pid*
+
+# Local environment files
+.env
+.env.local
+.envrc

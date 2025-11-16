@@ -1,0 +1,26 @@
+{
+  "type": "record",
+  "name": "BatchTransactionEvent",
+  "namespace": "com.translation.avro",
+  "fields": [
+    {
+      "name": "batchId",
+      "type": "string"
+    },
+    {
+      "name": "transactions",
+      "type": {
+        "type": "array",
+        "items": {
+          "type": "record",
+          "name": "Transaction",
+          "fields": [
+            { "name": "transactionId", "type": "string" },
+            { "name": "amount", "type": "double" },
+            { "name": "description", "type": "string" }
+          ]
+        }
+      }
+    }
+  ]
+}
