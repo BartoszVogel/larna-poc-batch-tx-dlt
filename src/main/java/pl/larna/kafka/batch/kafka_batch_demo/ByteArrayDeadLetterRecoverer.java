@@ -43,6 +43,7 @@ class ByteArrayDeadLetterRecoverer implements ConsumerRecordRecoverer {
 
     // Convert to bytes (raw if already byte[]; otherwise UTF-8/toString())
     byte[] keyBytes = extractKeyBytes(record);
+    log.warn("Extract key from record: {}", new String(keyBytes, StandardCharsets.UTF_8));
     byte[] valueBytes = extractValueBytes(record);
 
     // If the source record has a negative timestamp (e.g., synthetic ConsumerRecord),

@@ -2,6 +2,7 @@ package pl.larna.kafka.batch.kafka_batch_demo;
 
 import static java.lang.String.format;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
@@ -9,12 +10,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.reactive.function.client.WebClient;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 //@Configuration
 class KafkaSchemaRegistryConfiguration {
@@ -24,14 +23,17 @@ class KafkaSchemaRegistryConfiguration {
   @Value("${app.kafka.schema.register.url}")
   private String schemaRegistryUrl;
 
-  @Value("${app.kafka.consumer.transaction-rejected.topic}")
-  private String transactionRejectedTopic;
+  private final AppKafkaProperties appKafkaProperties;
+
+  KafkaSchemaRegistryConfiguration(AppKafkaProperties appKafkaProperties) {
+    this.appKafkaProperties = appKafkaProperties;
+  }
 
   @EventListener(ApplicationReadyEvent.class)
   void registerSchemaOnStartup() {
     try {
       String schema = loadAndMinifyAvroSchema("avro/batch-transaction-event.avsc");
-      updateSchema(transactionRejectedTopic, schema);
+      updateSchema(appKafkaProperties.getInbound().getTransactionRejected().getTopic(), schema);
     } catch (Exception ex) {
       log.error("Error: not able to register avro schema: {}", ex.getMessage());
     }

@@ -19,6 +19,7 @@
     <java.version>25</java.version>
     <confluent.version>7.6.0</confluent.version>
     <avro.version>1.11.4</avro.version>
+    <assertj.version>3.27.6</assertj.version>
     <maven.compiler.source>${java.version}</maven.compiler.source>
     <maven.compiler.target>${java.version}</maven.compiler.target>
   </properties>
@@ -53,6 +54,11 @@
       <artifactId>spring-boot-configuration-processor</artifactId>
       <optional>true</optional>
     </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-docker-compose</artifactId>
+    </dependency>
+
     <!-- Avro (for schema handling and Java generation) -->
     <dependency>
       <groupId>org.apache.avro</groupId>
@@ -74,6 +80,12 @@
     <dependency>
       <groupId>org.springframework.kafka</groupId>
       <artifactId>spring-kafka-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.assertj</groupId>
+      <artifactId>assertj-core</artifactId>
+      <version>${assertj.version}</version>
       <scope>test</scope>
     </dependency>
 

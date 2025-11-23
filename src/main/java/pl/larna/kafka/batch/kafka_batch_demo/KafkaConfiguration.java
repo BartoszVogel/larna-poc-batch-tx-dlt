@@ -9,7 +9,6 @@ import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -22,6 +21,7 @@ import org.springframework.kafka.listener.CommonErrorHandler;
 import org.springframework.kafka.listener.ConsumerRecordRecoverer;
 import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.util.backoff.FixedBackOff;
+import pl.larna.kafka.batch.kafka_batch_demo.AppKafkaProperties.BackOff;
 import pl.larna.kafka.batch.kafka_batch_demo.service.ServiceError;
 
 @EnableKafka
@@ -30,31 +30,29 @@ class KafkaConfiguration {
 
   private static final Logger log = LoggerFactory.getLogger(KafkaConfiguration.class);
 
-  @Value("${app.kafka.consumer.transaction-rejected.topic}")
-  private String transactionRejectedTopic;
+  private final KafkaProperties kafkaProperties;
+  private final AppKafkaProperties appKafkaProperties;
 
-  @Value("${app.kafka.consumer.transaction-rejected.backoff.interval}")
-  private long backoffInterval;
-
-  @Value("${app.kafka.consumer.transaction-rejected.backoff.max-attempts}")
-  private long maxAttempts;
-
-  @Value("${app.kafka.consumer.transaction-rejected-dlt.topic}")
-  private String transactionRejectedDltTopic;
-
-  @Value("${spring.kafka.bootstrap-servers}")
-  private String bootstrapServers;
+  KafkaConfiguration(KafkaProperties kafkaProperties, AppKafkaProperties appKafkaProperties) {
+    this.kafkaProperties = kafkaProperties;
+    this.appKafkaProperties = appKafkaProperties;
+  }
 
   @Bean
   NewTopic transactionRejectedTopic() {
-    return TopicBuilder.name(transactionRejectedTopic).build();
+    return TopicBuilder.name(appKafkaProperties.getInbound().getTransactionRejected().getTopic())
+        .build();
   }
 
   @Bean
   NewTopic transactionRejectedDltTopic() {
-    return TopicBuilder.name(transactionRejectedDltTopic).build();
+    return TopicBuilder.name(appKafkaProperties.getOutbound().getTransactionRejectedDlt().getTopic())
+        .build();
   }
 
+  // ---------------------------------------------------------------------------
+  // Producer (string key and BatchTransactionEvent value, with Schema Registry)
+  // ---------------------------------------------------------------------------
   @Bean
   public KafkaTemplate<String, BatchTransactionEvent> producerKafkaTemplate(
       KafkaProperties kafkaProperties) {
@@ -68,21 +66,24 @@ class KafkaConfiguration {
   @Bean
   public ProducerFactory<byte[], byte[]> dltProducerFactory() {
     Map<String, Object> props = new HashMap<>();
-    props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+    props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaProperties.getBootstrapServers());
     props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class);
     props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class);
+    props.put(ProducerConfig.CLIENT_ID_CONFIG, "kafka_batch_demo-dlt-producer");
     // DO NOT set schema.registry.url here
     return new DefaultKafkaProducerFactory<>(props);
   }
 
   @Bean
   public KafkaTemplate<byte[], byte[]> dltKafkaTemplate() {
+    dltProducerFactory().createProducer().close();
     return new KafkaTemplate<>(dltProducerFactory());
   }
 
   @Bean
   CommonErrorHandler errorHandler(ConsumerRecordRecoverer deadLetterPublishingRecoverer) {
-    FixedBackOff backOff = new FixedBackOff(backoffInterval, maxAttempts);
+    BackOff backOffProps = appKafkaProperties.getInbound().getTransactionRejected().getBackOff();
+    FixedBackOff backOff = new FixedBackOff(backOffProps.getInterval(), backOffProps.getMaxAttempts());
     DefaultErrorHandler handler = new DefaultErrorHandler(deadLetterPublishingRecoverer, backOff);
     // Optionally, add exceptions that should not be retried using handler.addNotRetryableExceptions(...)
     handler.addNotRetryableExceptions(ServiceError.class);
@@ -93,10 +94,11 @@ class KafkaConfiguration {
   ConsumerRecordRecoverer deadLetterPublishingRecoverer(
       KafkaTemplate<byte[], byte[]> dltKafkaTemplate) {
     return new ByteArrayDeadLetterRecoverer(dltKafkaTemplate, (record, ex) -> {
-      String dltTopic = record.topic() + ".dlt";
+      String dltTopic = appKafkaProperties.getOutbound().getTransactionRejectedDlt().getTopic();
       log.warn("Publishing failed record to DLT topic={} payload={} cause={}",
           dltTopic, record, ex.toString());
-      return new TopicPartition(dltTopic, record.partition());
+      // Use partition 0 to avoid mismatches when the source partition doesn't exist on the DLT topic
+      return new TopicPartition(dltTopic, 0);
     });
   }
 }

@@ -33,17 +33,21 @@ spring:
   threads:
     virtual:
       enabled: true
+  docker:
+    compose:
+      enabled: false
 
 app:
   kafka:
     schema:
       register:
         url: http://localhost:8081
-    consumer:
+    inbound:
       transaction-rejected:
         topic: "local.rejected-transactions-service.transaction-rejected"
         backoff:
           interval: 0
           max-attempts: 0
+    outbound:
       transaction-rejected-dlt:
         topic: "local.rejected-transactions-service.transaction-rejected.dlt"

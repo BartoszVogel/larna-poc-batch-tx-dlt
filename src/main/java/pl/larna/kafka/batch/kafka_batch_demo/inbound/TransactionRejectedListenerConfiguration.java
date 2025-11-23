@@ -30,7 +30,7 @@ class TransactionRejectedListenerConfiguration {
       idIsGroup = false,
       id = "transaction-rejected-listener",
       groupId = "rejected-transactions-service",
-      topics = "${app.kafka.consumer.transaction-rejected.topic}")
+      topics = "${app.kafka.inbound.transaction-rejected.topic}")
   void transactionRejectedEventListener(
       List<ConsumerRecord<String, BatchTransactionEvent>> events,
       Acknowledgment ack) {

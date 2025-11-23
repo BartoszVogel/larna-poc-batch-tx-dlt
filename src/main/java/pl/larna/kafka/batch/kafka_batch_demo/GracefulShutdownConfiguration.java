@@ -27,10 +27,14 @@ class GracefulShutdownConfiguration {
   @Bean
   ConcurrentKafkaListenerContainerFactory<Object, Object> kafkaListenerContainerFactory(
       ConcurrentKafkaListenerContainerFactoryConfigurer configurer,
-      ConsumerFactory<Object, Object> consumerFactory) {
+      ConsumerFactory<Object, Object> consumerFactory,
+      org.springframework.kafka.listener.CommonErrorHandler errorHandler) {
     var factory = new ConcurrentKafkaListenerContainerFactory<Object, Object>();
     // Apply Spring Boot autoconfiguration first
     configurer.configure(factory, consumerFactory);
+
+    // Ensure our global error handler (DefaultErrorHandler) is applied
+    factory.setCommonErrorHandler(errorHandler);
 
     // Ensure graceful shutdown of containers
     factory.getContainerProperties().setStopImmediate(false); // finish in-flight work

@@ -1,0 +1,7 @@
+spring:
+  docker:
+    compose:
+      skip.in-tests: false
+      profiles.active: test
+      file: ./docker-compose.yml
+      enabled: true

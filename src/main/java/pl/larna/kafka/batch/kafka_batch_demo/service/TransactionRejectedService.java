@@ -31,6 +31,7 @@ public class TransactionRejectedService {
     log.info("transaction       amount: {}", transaction.getAmount());
     log.info("transaction  description: {}", transaction.getDescription());
     if (transaction.getDescription().toLowerCase().contains("error")) {
+      log.error("Error processing transaction id: {}", transaction.getTransactionId());
       String errorMsg = "Error processing transaction id: " + transaction.getTransactionId();
       moveToDlt(record, transaction, errorMsg);
     }
@@ -39,7 +40,7 @@ public class TransactionRejectedService {
 
   private void moveToDlt(ConsumerRecord<String, BatchTransactionEvent> record,
       Transaction transaction, String reason) {
-    log.error("Error processing transaction id: {}", transaction.getTransactionId());
+    log.info("Moving transaction {} to DLT: {}", transaction.getTransactionId(), reason);
     ConsumerRecord<String, Transaction> invalidTxRecord = getInvalidTxRecord(record, transaction);
     dlt.accept(invalidTxRecord, new ServiceError(reason));
   }

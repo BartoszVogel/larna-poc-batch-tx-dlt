@@ -42,11 +42,6 @@ services:
     ports:
       - "8081:8081"
 
-# Exposed ports:
-# - Zookeeper: 2181
-# - Kafka: internal 29092, external 9092 (use 9092 for apps outside the network, 29092 for containers)
-# - Schema Registry: 8081 (for both internal and external access)
-
 networks:
   default:
     name: dev-net
