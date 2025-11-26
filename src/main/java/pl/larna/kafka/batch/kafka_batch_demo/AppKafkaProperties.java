@@ -3,7 +3,6 @@ package pl.larna.kafka.batch.kafka_batch_demo;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
-
 @Configuration
 @ConfigurationProperties(prefix = "app.kafka")
 public class AppKafkaProperties {
@@ -53,7 +52,6 @@ public class AppKafkaProperties {
       this.transactionRejectedDlt = transactionRejectedDlt;
     }
   }
-
 
   public static class Topic {
 

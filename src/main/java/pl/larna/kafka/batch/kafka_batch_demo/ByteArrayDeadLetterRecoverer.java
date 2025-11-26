@@ -40,11 +40,13 @@ class ByteArrayDeadLetterRecoverer implements ConsumerRecordRecoverer {
   public void accept(ConsumerRecord<?, ?> record, Exception exception) {
     TopicPartition tp = destinationResolver.apply(record, exception);
     Headers headers = copyHeaders(record.headers());
+    enrichHeaders(headers);
 
     // Convert to bytes (raw if already byte[]; otherwise UTF-8/toString())
     byte[] keyBytes = extractKeyBytes(record);
     log.warn("Extract key from record: {}", new String(keyBytes, StandardCharsets.UTF_8));
     byte[] valueBytes = extractValueBytes(record);
+    log.warn("Extract value from record: {}", new String(valueBytes, StandardCharsets.UTF_8));
 
     // If the source record has a negative timestamp (e.g., synthetic ConsumerRecord),
     // pass null so the broker assigns the timestamp. Kafka forbids negative timestamps.
@@ -68,10 +70,13 @@ class ByteArrayDeadLetterRecoverer implements ConsumerRecordRecoverer {
   private Headers copyHeaders(Headers original) {
     RecordHeaders copy = new RecordHeaders();
     original.forEach(h -> copy.add(h.key(), h.value()));
-    // mark DLT and add own record headers
-    copy.add("x-original-topic", nullSafeBytes(original.lastHeader(KafkaHeaders.RECEIVED_TOPIC)));
-    copy.add("x-error-class", "dlt".getBytes(StandardCharsets.UTF_8));
     return copy;
+  }
+
+  private void enrichHeaders(Headers headers) {
+    // mark DLT and add own record headers
+    headers.add("x-original-topic", nullSafeBytes(headers.lastHeader(KafkaHeaders.RECEIVED_TOPIC)));
+    headers.add("x-error-class", "dlt".getBytes(StandardCharsets.UTF_8));
   }
 
   private byte[] nullSafeBytes(Header header) {
@@ -83,26 +88,29 @@ class ByteArrayDeadLetterRecoverer implements ConsumerRecordRecoverer {
   }
 
   private byte[] extractValueBytes(ConsumerRecord<?, ?> record) {
-    Header header = record.headers().lastHeader(SerializationUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER);
-    if (header != null) {
-      byte[] value = {};
-      try {
-        DeserializationException exception = SerializationUtils.byteArrayToDeserializationException(
-            logger, header);
-        if (exception != null) {
-          log.debug("DeserializationException data: {}", new String(value, StandardCharsets.UTF_8));
-          return exception.getData();
-        }
-      } catch (Exception ex) {
-        log.error("DeserializationException could not be deserialized", ex);
-      }
-      return value;
-    } else {
-      return getBytes(record.value());
-    }
+    Header header = record.headers()
+        .lastHeader(SerializationUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER);
+    return header != null
+        ? getOriginalValueFromDeserializationException(header)
+        : getBytes(record.value());
   }
 
-  private static byte[] getBytes(Object value) {
+  private byte[] getOriginalValueFromDeserializationException(Header header) {
+    try {
+      DeserializationException exception = SerializationUtils.byteArrayToDeserializationException(
+          logger, header);
+      if (exception != null) {
+        log.debug("DeserializationException data: {}",
+            new String(exception.getData(), StandardCharsets.UTF_8));
+        return exception.getData();
+      }
+    } catch (Exception ex) {
+      log.error("DeserializationException could not be deserialized", ex);
+    }
+    return new byte[0];
+  }
+
+  private byte[] getBytes(Object value) {
     return switch (value) {
       case null -> null;
       case byte[] b -> b;

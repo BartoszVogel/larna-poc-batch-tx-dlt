@@ -13,7 +13,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Lazy;
 
 @TestConfiguration
 public class KafkaTestConfiguration {
@@ -26,10 +25,9 @@ public class KafkaTestConfiguration {
     Properties props = new Properties();
     props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaProperties.getBootstrapServers());
     props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
-    props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
-        ByteArrayDeserializer.class.getName());
+    props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
     props.put(ConsumerConfig.GROUP_ID_CONFIG, "it-dlt-consumer-" + UUID.randomUUID());
-    props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
+    props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
     String topic = appKafkaProperties.getOutbound().getTransactionRejectedDlt().getTopic();
     KafkaConsumer<byte[], byte[]> dltConsumer = new KafkaConsumer<>(props);
     dltConsumer.subscribe(List.of(topic));
