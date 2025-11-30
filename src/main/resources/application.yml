@@ -42,12 +42,12 @@ app:
     schema:
       register:
         url: http://localhost:8081
+    backoff:
+      interval: 0
+      max-attempts: 0
     inbound:
       transaction-rejected:
         topic: "local.rejected-transactions-service.transaction-rejected"
-        backoff:
-          interval: 0
-          max-attempts: 0
     outbound:
       transaction-rejected-dlt:
-        topic: "local.rejected-transactions-service.transaction-rejected.dlt"
+        topic: "local.rejected-transactions-service.transaction-rejected-dlt"

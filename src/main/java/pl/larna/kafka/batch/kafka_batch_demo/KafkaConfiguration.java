@@ -82,7 +82,7 @@ class KafkaConfiguration {
 
   @Bean
   CommonErrorHandler errorHandler(ConsumerRecordRecoverer deadLetterPublishingRecoverer) {
-    BackOff backOffProps = appKafkaProperties.getInbound().getTransactionRejected().getBackOff();
+    BackOff backOffProps = appKafkaProperties.getBackOff();
     FixedBackOff backOff = new FixedBackOff(backOffProps.getInterval(), backOffProps.getMaxAttempts());
     DefaultErrorHandler handler = new DefaultErrorHandler(deadLetterPublishingRecoverer, backOff);
     // Optionally, add exceptions that should not be retried using handler.addNotRetryableExceptions(...)
@@ -91,10 +91,9 @@ class KafkaConfiguration {
   }
 
   @Bean
-  ConsumerRecordRecoverer deadLetterPublishingRecoverer(
-      KafkaTemplate<byte[], byte[]> dltKafkaTemplate) {
+  ConsumerRecordRecoverer deadLetterPublishingRecoverer(KafkaTemplate<byte[], byte[]> dltKafkaTemplate) {
     return new ByteArrayDeadLetterRecoverer(dltKafkaTemplate, (record, ex) -> {
-      String dltTopic = appKafkaProperties.getOutbound().getTransactionRejectedDlt().getTopic();
+      String dltTopic =  record.topic() + "-dlt";
       log.warn("Publishing failed record to DLT topic={} payload={} cause={}",
           dltTopic, record, ex.toString());
       // Use partition 0 to avoid mismatches when the source partition doesn't exist on the DLT topic

@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Configuration;
 @ConfigurationProperties(prefix = "app.kafka")
 public class AppKafkaProperties {
 
+  private BackOff backOff;
   private Inbound inbound;
   private Outbound outbound;
 
@@ -24,6 +25,14 @@ public class AppKafkaProperties {
 
   public void setOutbound(Outbound outbound) {
     this.outbound = outbound;
+  }
+
+  public BackOff getBackOff() {
+    return backOff;
+  }
+
+  public void setBackOff(BackOff backOff) {
+    this.backOff = backOff;
   }
 
   public static class Inbound {
@@ -56,7 +65,6 @@ public class AppKafkaProperties {
   public static class Topic {
 
     private String topic;
-    private BackOff backOff;
 
     public String getTopic() {
       return topic;
@@ -64,14 +72,6 @@ public class AppKafkaProperties {
 
     public void setTopic(String topic) {
       this.topic = topic;
-    }
-
-    public BackOff getBackOff() {
-      return backOff;
-    }
-
-    public void setBackOff(BackOff backOff) {
-      this.backOff = backOff;
     }
   }
 
