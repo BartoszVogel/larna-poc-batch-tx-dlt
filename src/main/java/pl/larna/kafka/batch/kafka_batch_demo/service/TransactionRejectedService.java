@@ -7,15 +7,18 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.kafka.listener.ConsumerRecordRecoverer;
 import org.springframework.stereotype.Component;
+import pl.larna.kafka.batch.kafka_batch_demo.external.DummyService;
 
 @Component
 public class TransactionRejectedService {
 
   private static final Logger log = LoggerFactory.getLogger(TransactionRejectedService.class);
 
+  private final DummyService dummyService;
   private final ConsumerRecordRecoverer dlt;
 
-  public TransactionRejectedService(ConsumerRecordRecoverer deadLetterRecoverer) {
+  public TransactionRejectedService(DummyService dummyService, ConsumerRecordRecoverer deadLetterRecoverer) {
+    this.dummyService = dummyService;
     this.dlt = deadLetterRecoverer;
   }
 
@@ -27,15 +30,13 @@ public class TransactionRejectedService {
 
   void onTransactionEvent(ConsumerRecord<String, BatchTransactionEvent> record,
       Transaction transaction) {
-    log.info("transaction           id: {}", transaction.getTransactionId());
-    log.info("transaction       amount: {}", transaction.getAmount());
-    log.info("transaction  description: {}", transaction.getDescription());
-    if (transaction.getDescription().toLowerCase().contains("error")) {
+    try {
+      dummyService.doSomething(transaction);
+    } catch (Exception e) {
       log.error("Error processing transaction id: {}", transaction.getTransactionId());
       String errorMsg = "Error processing transaction id: " + transaction.getTransactionId();
       moveToDlt(record, transaction, errorMsg);
     }
-    log.info("----------------------------------------------------------------");
   }
 
   private void moveToDlt(ConsumerRecord<String, BatchTransactionEvent> record,

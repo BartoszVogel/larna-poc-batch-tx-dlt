@@ -1,6 +1,11 @@
 package pl.larna.kafka.batch.kafka_batch_demo.dlt;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 import com.translation.avro.BatchTransactionEvent;
 import com.translation.avro.Transaction;
@@ -11,15 +16,22 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import pl.larna.kafka.batch.kafka_batch_demo.BaseIntegrationTest;
+import pl.larna.kafka.batch.kafka_batch_demo.external.DummyService;
 
 class TransactionRejectedListenerIntegrationTest extends BaseIntegrationTest {
 
   private String inboundTopic;
 
+  @MockitoBean
+  private DummyService dummyService;
+
   @BeforeEach
   void setUp() {
     inboundTopic = appKafkaProperties.getInbound().getTransactionRejected().getTopic();
+    doThrow(new RuntimeException("Oops")).when(dummyService)
+        .doSomething(argThat(t -> t.getDescription().toLowerCase().contains("error")));
   }
 
   @Test
@@ -45,7 +57,8 @@ class TransactionRejectedListenerIntegrationTest extends BaseIntegrationTest {
     // given
     Transaction ok = generateTransaction(10.0, "ok");
     Transaction error = generateTransaction(12.0, "contains ERROR text");
-    BatchTransactionEvent event = buildEvent(UUID.randomUUID().toString(), List.of(ok, error));
+    Transaction ok2 = generateTransaction(123.0, "ok 2");
+    BatchTransactionEvent event = buildEvent(UUID.randomUUID().toString(), List.of(ok, error, ok2));
 
     // when
     kafkaTemplate.send(inboundTopic, "fake-batch-id-2", event);
@@ -55,6 +68,8 @@ class TransactionRejectedListenerIntegrationTest extends BaseIntegrationTest {
       assertThat(rec.key()).isNotNull().asString().isEqualTo(error.getTransactionId());
       assertThat(rec.value()).isNotNull().asString().contains(error.getDescription());
     });
+
+    verify(dummyService, times(3)).doSomething(any(Transaction.class));
   }
 
   @Test
