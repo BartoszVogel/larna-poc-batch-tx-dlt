@@ -10,6 +10,7 @@ public class AppKafkaProperties {
   private BackOff backOff;
   private Inbound inbound;
   private Outbound outbound;
+  private String schemaRegistryUrl;
 
   public Inbound getInbound() {
     return inbound;
@@ -33,6 +34,14 @@ public class AppKafkaProperties {
 
   public void setBackOff(BackOff backOff) {
     this.backOff = backOff;
+  }
+
+  public String getSchemaRegistryUrl() {
+    return schemaRegistryUrl;
+  }
+
+  public void setSchemaRegistryUrl(String schemaRegistryUrl) {
+    this.schemaRegistryUrl = schemaRegistryUrl;
   }
 
   public static class Inbound {

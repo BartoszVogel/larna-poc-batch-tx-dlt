@@ -1,7 +1,6 @@
 package pl.larna.kafka.batch.kafka_batch_demo.service;
 
-import com.translation.avro.BatchTransactionEvent;
-import com.translation.avro.Transaction;
+import com.translation.avro.TransactionEvent;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,43 +15,46 @@ public class TransactionRejectedService {
 
   private final DummyService dummyService;
   private final ConsumerRecordRecoverer dlt;
+  private final TransactionMapper mapper;
 
-  public TransactionRejectedService(DummyService dummyService, ConsumerRecordRecoverer deadLetterRecoverer) {
+  public TransactionRejectedService(DummyService dummyService,
+      ConsumerRecordRecoverer deadLetterRecoverer, TransactionMapper mapper) {
     this.dummyService = dummyService;
     this.dlt = deadLetterRecoverer;
+    this.mapper = mapper;
   }
 
-  public void onBatchEvent(ConsumerRecord<String, BatchTransactionEvent> record) {
-    BatchTransactionEvent event = record.value();
-    log.info("\n########### BATCH ID {} ######", event.getBatchId());
-    event.getTransactions().forEach(tx -> onTransactionEvent(record, tx));
+  public void process(ConsumerRecord<String, TransactionEvent> record) {
+    Transaction transaction = mapper.transactionEventToTransaction(record.value());
+    onTransactionEvent(record, transaction);
   }
 
-  void onTransactionEvent(ConsumerRecord<String, BatchTransactionEvent> record,
+  void onTransactionEvent(ConsumerRecord<String, TransactionEvent> record,
       Transaction transaction) {
     try {
       dummyService.doSomething(transaction);
+      log.info("Finished processing transaction id: {}", transaction.transactionId());
     } catch (Exception e) {
-      log.error("Error processing transaction id: {}", transaction.getTransactionId());
-      String errorMsg = "Error processing transaction id: " + transaction.getTransactionId();
+      log.error("Error processing transaction id: {}", transaction.transactionId());
+      String errorMsg = "Error processing transaction id: " + transaction.transactionId();
       moveToDlt(record, transaction, errorMsg);
     }
   }
 
-  private void moveToDlt(ConsumerRecord<String, BatchTransactionEvent> record,
+  private void moveToDlt(ConsumerRecord<String, TransactionEvent> record,
       Transaction transaction, String reason) {
-    log.info("Moving transaction {} to DLT: {}", transaction.getTransactionId(), reason);
+    log.info("Moving transaction {} to DLT: {}", transaction.transactionId(), reason);
     ConsumerRecord<String, Transaction> invalidTxRecord = getInvalidTxRecord(record, transaction);
-    dlt.accept(invalidTxRecord, new ServiceError(reason));
+    dlt.accept(invalidTxRecord, new RuntimeException(reason));
   }
 
   private ConsumerRecord<String, Transaction> getInvalidTxRecord(
-      ConsumerRecord<String, BatchTransactionEvent> record, Transaction transaction) {
+      ConsumerRecord<String, TransactionEvent> record, Transaction transaction) {
     return new ConsumerRecord<>(
         record.topic(),
         record.partition(),
         record.offset(),
-        String.valueOf(transaction.getTransactionId()),
+        String.valueOf(transaction.transactionId()),
         transaction);
   }
 }

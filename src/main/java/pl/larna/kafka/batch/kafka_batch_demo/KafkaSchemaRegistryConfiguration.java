@@ -20,7 +20,7 @@ class KafkaSchemaRegistryConfiguration {
 
   private static final Logger log = LoggerFactory.getLogger(KafkaSchemaRegistryConfiguration.class);
 
-  @Value("${app.kafka.schema.register.url}")
+  @Value("${app.kafka.schema-register-url}")
   private String schemaRegistryUrl;
 
   private final AppKafkaProperties appKafkaProperties;

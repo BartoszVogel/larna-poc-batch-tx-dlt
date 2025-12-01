@@ -76,7 +76,6 @@ class ByteArrayDeadLetterRecoverer implements ConsumerRecordRecoverer {
   private void enrichHeaders(Headers headers) {
     // mark DLT and add own record headers
     headers.add("x-original-topic", nullSafeBytes(headers.lastHeader(KafkaHeaders.RECEIVED_TOPIC)));
-    headers.add("x-error-class", "dlt".getBytes(StandardCharsets.UTF_8));
   }
 
   private byte[] nullSafeBytes(Header header) {

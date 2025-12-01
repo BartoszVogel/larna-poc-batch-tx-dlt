@@ -1,9 +1,6 @@
 package pl.larna.kafka.batch.kafka_batch_demo.rest;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.translation.avro.BatchTransactionEvent;
-import com.translation.avro.Transaction;
-import java.util.List;
+import com.translation.avro.TransactionEvent;
 import java.util.UUID;
 import java.util.random.RandomGenerator;
 import java.util.stream.IntStream;
@@ -13,60 +10,46 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import pl.larna.kafka.batch.kafka_batch_demo.AppKafkaProperties;
+import pl.larna.kafka.batch.kafka_batch_demo.service.Transaction;
+import pl.larna.kafka.batch.kafka_batch_demo.service.TransactionMapper;
 
 @RestController
 @RequestMapping("/generate-batches")
 class GenerateBatchesController {
 
-  private final KafkaTemplate<String, BatchTransactionEvent> producer;
+  private final KafkaTemplate<String, TransactionEvent> producer;
+  private final TransactionMapper mapper;
   private final AppKafkaProperties appKafkaProperties;
 
   public GenerateBatchesController(
-      KafkaTemplate<String, BatchTransactionEvent> producerKafkaTemplate,
+      KafkaTemplate<String, TransactionEvent> producerKafkaTemplate, TransactionMapper mapper,
       AppKafkaProperties appKafkaProperties) {
     this.producer = producerKafkaTemplate;
+    this.mapper = mapper;
     this.appKafkaProperties = appKafkaProperties;
   }
 
   @PostMapping
   String send(@RequestBody BatchRequest message) {
-    IntStream.range(0, message.numberOfBatches)
-        .forEach(_ -> {
-          var event = generateBatch(message.transactionInBatch, message.shouldHasError);
-          producer.send(appKafkaProperties.getInbound().getTransactionRejected().getTopic(),
-              UUID.randomUUID().toString(), event);
-        });
+    String to = appKafkaProperties.getInbound().getTransactionRejected().getTopic();
+    IntStream.range(0, message.numberOfTransactions)
+        .forEach(
+            _ -> producer.send(to, UUID.randomUUID().toString(), generateBatch())
+        );
     return "OK";
   }
 
-  private BatchTransactionEvent generateBatch(int transactionInBatch, boolean shouldHasError) {
-    List<Transaction> transactions = generateTransactions(transactionInBatch, shouldHasError);
-    return BatchTransactionEvent.newBuilder()
-        .setBatchId(UUID.randomUUID().toString())
-        .setTransactions(transactions)
-        .build();
+  private TransactionEvent generateBatch() {
+    return mapper.transactionToTransactionEvent(generateTransaction());
   }
 
-  private List<Transaction> generateTransactions(int transactionCount, boolean shouldHasError) {
-    int errorIndex = shouldHasError ? transactionCount / 2 : -1;
-    return IntStream.range(0, transactionCount)
-        .mapToObj(index -> {
-          String description = errorIndex == index ? "Error" : "Transaction_" + index;
-          return generateTransaction(description);
-        })
-        .toList();
+  private Transaction generateTransaction() {
+    return new Transaction(UUID.randomUUID().toString(),
+        RandomGenerator.getDefault().nextDouble() * 1000,
+        "Transaction");
   }
 
-  private static Transaction generateTransaction(String description) {
-    return Transaction.newBuilder()
-        .setTransactionId(UUID.randomUUID().toString())
-        .setAmount(RandomGenerator.getDefault().nextDouble() * 1000)
-        .setDescription(description)
-        .build();
-  }
-
-  record BatchRequest(int numberOfBatches, int transactionInBatch,
-                      @JsonProperty("containError") boolean shouldHasError) {
+  record BatchRequest(int numberOfTransactions) {
 
   }
 }

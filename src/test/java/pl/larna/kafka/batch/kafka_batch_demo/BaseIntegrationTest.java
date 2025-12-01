@@ -3,8 +3,7 @@ package pl.larna.kafka.batch.kafka_batch_demo;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
-import com.translation.avro.BatchTransactionEvent;
-import com.translation.avro.Transaction;
+import com.translation.avro.TransactionEvent;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -20,6 +19,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+import pl.larna.kafka.batch.kafka_batch_demo.external.DummyService;
+import pl.larna.kafka.batch.kafka_batch_demo.service.Transaction;
+import pl.larna.kafka.batch.kafka_batch_demo.service.TransactionMapper;
 
 @ActiveProfiles("test")
 @SpringBootTest(classes = {KafkaTestConfiguration.class})
@@ -31,7 +34,7 @@ public abstract class BaseIntegrationTest {
   protected AppKafkaProperties appKafkaProperties;
 
   @Autowired
-  protected KafkaTemplate<String, BatchTransactionEvent> kafkaTemplate;
+  protected KafkaTemplate<String, TransactionEvent> kafkaTemplate;
 
   @Autowired
   protected KafkaProducer<byte[], byte[]> byteArrayKafkaProducer;
@@ -39,22 +42,22 @@ public abstract class BaseIntegrationTest {
   @Autowired
   protected KafkaConsumer<byte[], byte[]> dltConsumer;
 
-  protected BatchTransactionEvent buildEvent(String batchId, List<Transaction> txs) {
-    return BatchTransactionEvent.newBuilder()
-        .setBatchId(batchId)
-        .setTransactions(txs)
-        .build();
+  @Autowired
+  protected TransactionMapper mapper;
+
+  @MockitoSpyBean
+  protected DummyService dummyService;
+
+  protected TransactionEvent buildEvent(Transaction tx) {
+    return mapper.transactionToTransactionEvent(tx);
   }
 
   protected Transaction generateTransaction(double amount, String description) {
-    return Transaction.newBuilder()
-        .setTransactionId(UUID.randomUUID().toString())
-        .setAmount(amount)
-        .setDescription(description)
-        .build();
+    return new Transaction("transactionId-" + UUID.randomUUID(), amount, description);
   }
 
-  protected void waitForDltRecords(String key, Consumer<ConsumerRecord<byte[], byte[]>> requirements) {
+  protected void waitForDltRecords(String key,
+      Consumer<ConsumerRecord<byte[], byte[]>> requirements) {
     await()
         .atMost(Duration.ofSeconds(5))
         .pollInterval(Duration.ofMillis(500))
@@ -78,5 +81,9 @@ public abstract class BaseIntegrationTest {
 
   protected List<ConsumerRecord<byte[], byte[]>> pollDlt() {
     return pollDlt(Duration.ofMillis(200));
+  }
+
+  protected String buildKeyRecord(String key) {
+    return key + "-" + UUID.randomUUID();
   }
 }

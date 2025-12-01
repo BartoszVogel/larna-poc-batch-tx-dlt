@@ -2,34 +2,15 @@ spring:
   application:
     name: kafka_batch_demo
   kafka:
-    consumer:
-      enable-auto-commit: false # hard-disable Spring Boot-level auto-commit (must be false with manual acks)
-      # Use ErrorHandlingDeserializer as wrapper
-      key-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
-      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
-      auto-offset-reset: earliest
-      max-poll-records: 10 # how many messages per batch
-      properties:
-        # Avro / Schema Registry config
-        schema.registry.url: ${app.kafka.schema.register.url}
-        specific.avro.reader: true
-        spring.deserializer.key.delegate.class: org.apache.kafka.common.serialization.StringDeserializer
-        spring.deserializer.value.delegate.class: io.confluent.kafka.serializers.KafkaAvroDeserializer
-        #max.poll.interval.ms: 600000 # max time between polls. This is the maximum delay between two consecutive poll() calls before the consumer is considered failed.
-        #fetch-max-wait-ms: 5000 # how long Kafka waits to fulfill your poll
+    bootstrap-servers: localhost:9092
     producer: # for sending test batches
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: io.confluent.kafka.serializers.KafkaAvroSerializer
       properties:
         spring.deserializer.key.delegate.class: org.apache.kafka.common.serialization.StringDeserializer
         spring.deserializer.value.delegate.class: io.confluent.kafka.serializers.KafkaAvroDeserializer
-        schema.registry.url: ${app.kafka.schema.register.url}
+        schema.registry.url: ${app.kafka.schema-registry-url}
         auto.register.schemas: true
-    listener:
-      type: batch
-      ack-mode: manual
-      #auto-startup: false # can be disabled dynamically by REST KafkaListenerController
-    bootstrap-servers: localhost:9092
   threads:
     virtual:
       enabled: true
@@ -39,9 +20,7 @@ spring:
 
 app:
   kafka:
-    schema:
-      register:
-        url: http://localhost:8081
+    schema-registry-url: http://localhost:8081
     backoff:
       interval: 0
       max-attempts: 0
